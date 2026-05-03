@@ -92,7 +92,7 @@ func (sa *SimpleArchiver) scanLookaheadGroups(data []byte) []byte {
 					nextRun++
 				}
 
-				if nextRun >= 4 {
+				if nextRun >= 3 {
 					break
 				}
 
