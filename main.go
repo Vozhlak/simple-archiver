@@ -67,6 +67,21 @@ func (sa *SimpleArchiver) createControlByte(count int, isCompressed bool) byte {
 	return byte(count)
 }
 
+func (sa *SimpleArchiver) collectUncompressedGroup(data []byte, start int) int {
+	i := start
+	for i < len(data) {
+		nextRun := 1
+		for i+nextRun < len(data) && data[i+nextRun] == data[i] {
+			nextRun++
+		}
+		if nextRun >= 3 {
+			break
+		}
+		i += nextRun
+	}
+	return i
+}
+
 func (sa *SimpleArchiver) scanLookaheadGroups(data []byte) []byte {
 	result := []byte{}
 	i := 0
@@ -84,28 +99,47 @@ func (sa *SimpleArchiver) scanLookaheadGroups(data []byte) []byte {
 			result = append(result, compressed...)
 			i += runLen
 		} else {
-			groupStart := i
+			groupEnd := sa.collectUncompressedGroup(data, i)
+			groupLen := groupEnd - i
 
-			for i < len(data) {
-				nextRun := 1
-				for i+nextRun < len(data) && data[i+nextRun] == data[i] {
-					nextRun++
-				}
-
-				if nextRun >= 3 {
-					break
-				}
-
-				i += nextRun
-			}
-
-			groupLen := i - groupStart
 			ctrl := sa.createControlByte(groupLen, false)
 			result = append(result, ctrl)
-			result = append(result, data[groupStart:i]...)
+			result = append(result, data[i:groupEnd]...)
+			i = groupEnd
 		}
 	}
 
+	return result
+}
+
+func (sa *SimpleArchiver) compress(data []byte) []byte {
+	if len(sa.compressEmpty(data)) == 0 {
+		return []byte{}
+	}
+
+	result := []byte{}
+	i := 0
+
+	for i < len(data) {
+		runLen := 1
+		for i+runLen < len(data) && data[i+runLen] == data[i] {
+			runLen++
+		}
+
+		if runLen >= 4 {
+			ctrl := sa.createControlByte(runLen, true)
+			result = append(result, ctrl, data[i])
+			i += runLen
+		} else {
+			groupEnd := sa.collectUncompressedGroup(data, i)
+			groupLen := groupEnd - i
+
+			ctrl := sa.createControlByte(groupLen, false)
+			result = append(result, ctrl)
+			result = append(result, data[i:groupEnd]...)
+			i = groupEnd
+		}
+	}
 	return result
 }
 
