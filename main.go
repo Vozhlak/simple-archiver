@@ -127,12 +127,17 @@ func (sa *SimpleArchiver) compress(data []byte) []byte {
 		}
 
 		if runLen >= 4 {
+			compressed := sa.countRepeating(data[i : i+runLen])
 			ctrl := sa.createControlByte(runLen, true)
-			result = append(result, ctrl, data[i])
+			result = append(result, ctrl)
+			result = append(result, compressed[len(compressed)-1])
 			i += runLen
 		} else {
+			groupStart := i
+			i++
+
 			groupEnd := sa.collectUncompressedGroup(data, i)
-			groupLen := groupEnd - i
+			groupLen := groupEnd - groupStart
 
 			ctrl := sa.createControlByte(groupLen, false)
 			result = append(result, ctrl)
