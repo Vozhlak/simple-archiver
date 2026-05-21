@@ -148,6 +148,24 @@ func (sa *SimpleArchiver) compress(data []byte) []byte {
 	return result
 }
 
+func (sa *SimpleArchiver) decompress(data []byte) []byte {
+	if len(data) == 0 {
+		return []byte{}
+	}
+
+	result := []byte{}
+	i := 0
+
+	for i < len(data) {
+		control := data[i]
+		i++
+
+		fmt.Printf("Управляющий байт: %#02x (%08b)\n", control, control)
+	}
+
+	return result
+}
+
 func main() {
 	fmt.Println("Happy coding!!!")
 }
