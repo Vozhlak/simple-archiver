@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -141,7 +142,7 @@ func (sa *SimpleArchiver) compress(data []byte) []byte {
 
 			ctrl := sa.createControlByte(groupLen, false)
 			result = append(result, ctrl)
-			result = append(result, data[i:groupEnd]...)
+			result = append(result, data[groupStart:groupEnd]...)
 			i = groupEnd
 		}
 	}
@@ -201,4 +202,54 @@ func (sa *SimpleArchiver) decompress(data []byte) []byte {
 
 func main() {
 	fmt.Println("Happy coding!!!")
+
+	sa := NewArchiver("path")
+
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{
+			name: "Пустые данные",
+			data: []byte{},
+		},
+		{
+			name: "Один символ",
+			data: []byte("A"),
+		},
+		{
+			name: "Только несжатый блок",
+			data: []byte("ABCDE"),
+		},
+		{
+			name: "Сжатие и распаковка 'AAAAABCD'",
+			data: []byte("AAAAABCD"),
+		},
+		{
+			name: "Несколько блоков подряд",
+			data: []byte("AAAAABBBBCCXYZDDDDE"),
+		},
+		{
+			name: "Смешанная последовательность",
+			data: []byte("ZZZZabcdEEEE12345"),
+		},
+		{
+			name: "Граница 127 одинаковых символов",
+			data: bytes.Repeat([]byte{'X'}, 127),
+		},
+	}
+
+	for _, test := range tests {
+		fmt.Println("=======================================")
+		fmt.Println(test.name)
+
+		compressed := sa.compress(test.data)
+		decompressed := sa.decompress(compressed)
+		isEqual := bytes.Equal(test.data, decompressed)
+
+		fmt.Printf("Исходные данные: %v\n", test.data)
+		fmt.Printf("Сжатые данные:   %v\n", compressed)
+		fmt.Printf("Распакованные:   %v\n", decompressed)
+		fmt.Printf("Данные совпадают: %t\n", isEqual)
+	}
 }
