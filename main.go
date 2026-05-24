@@ -153,7 +153,7 @@ func (sa *SimpleArchiver) decompress(data []byte) []byte {
 		return []byte{}
 	}
 
-	var result []byte
+	result := make([]byte, 0, len(data))
 	i := 0
 
 	for i < len(data) {
@@ -165,21 +165,34 @@ func (sa *SimpleArchiver) decompress(data []byte) []byte {
 		isCompressed := (control & 0x80) != 0
 		length := int(control & 0x7F)
 
+		if length == 0 {
+			continue
+		}
+
 		if isCompressed {
 			fmt.Printf("Тип: сжатая, длина: %d\n", length)
 
 			if i >= len(data) {
-				break
+				return result
 			}
 
 			value := data[i]
 			i++
 
+			start := len(result)
+			result = append(result, make([]byte, length)...)
 			for j := 0; j < length; j++ {
-				result = append(result, value)
+				result[start+j] = value
 			}
 		} else {
 			fmt.Printf("Тип: несжатая, длина: %d\n", length)
+
+			if i+length > len(data) {
+				return result
+			}
+
+			result = append(result, data[i:i+length]...)
+			i += length
 		}
 	}
 
