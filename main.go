@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 )
 
 const (
@@ -198,6 +201,41 @@ func (sa *SimpleArchiver) decompress(data []byte) []byte {
 	}
 
 	return result
+}
+
+func (sa *SimpleArchiver) CompressFile(inputPath, outputPath string) error {
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		return fmt.Errorf("open input file %q: %w", inputPath, err)
+	}
+	defer inputFile.Close()
+
+	createdFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("create output file %q: %w", outputPath, err)
+	}
+	defer createdFile.Close()
+
+	reader := bufio.NewReader(inputFile)
+	_ = reader
+
+	writer := bufio.NewWriter(createdFile)
+	defer writer.Flush()
+
+	fileName := filepath.Base(inputPath)
+	if len(fileName) > 255 {
+		return fmt.Errorf("file name too long for header: %q", fileName)
+	}
+
+	if _, err = writer.Write([]byte{byte(len(fileName))}); err != nil {
+		return fmt.Errorf("write file name length to archive %q: %w", outputPath, err)
+	}
+
+	if _, err = writer.Write([]byte(fileName)); err != nil {
+		return fmt.Errorf("write file name %q to archive %q: %w", fileName, outputPath, err)
+	}
+
+	return nil
 }
 
 func main() {
