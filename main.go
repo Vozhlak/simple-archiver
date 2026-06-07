@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -217,8 +218,6 @@ func (sa *SimpleArchiver) CompressFile(inputPath, outputPath string) error {
 	defer createdFile.Close()
 
 	reader := bufio.NewReader(inputFile)
-	_ = reader
-
 	writer := bufio.NewWriter(createdFile)
 	defer writer.Flush()
 
@@ -233,6 +232,38 @@ func (sa *SimpleArchiver) CompressFile(inputPath, outputPath string) error {
 
 	if _, err = writer.Write([]byte(fileName)); err != nil {
 		return fmt.Errorf("write file name %q to archive %q: %w", fileName, outputPath, err)
+	}
+
+	for {
+		n, readErr := reader.Read(sa.buffer)
+
+		if n > 0 {
+			compressed := sa.compress(sa.buffer[:n])
+
+			if len(compressed) > 0xFFFF {
+				return fmt.Errorf("compressed block too large: %d bytes", len(compressed))
+			}
+
+			blockSize := uint16(len(compressed))
+
+			if err = writer.WriteByte(byte(blockSize >> 8)); err != nil {
+				return fmt.Errorf("write compressed block size high byte: %w", err)
+			}
+			if err = writer.WriteByte(byte(blockSize)); err != nil {
+				return fmt.Errorf("write compressed block size low byte: %w", err)
+			}
+
+			if _, err = writer.Write(compressed); err != nil {
+				return fmt.Errorf("write compressed block data: %w", err)
+			}
+		}
+
+		if err == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return fmt.Errorf("read input file %q: %w", inputPath, readErr)
+		}
 	}
 
 	return nil
