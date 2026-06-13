@@ -258,13 +258,54 @@ func (sa *SimpleArchiver) CompressFile(inputPath, outputPath string) error {
 			}
 		}
 
-		if err == io.EOF {
+		if readErr == io.EOF {
 			break
 		}
 		if readErr != nil {
 			return fmt.Errorf("read input file %q: %w", inputPath, readErr)
 		}
 	}
+
+	return nil
+}
+
+func (sa *SimpleArchiver) DecompressFile(inputPath, outputDir string) error {
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		return fmt.Errorf("open input file %q: %w", inputPath, err)
+	}
+	defer inputFile.Close()
+
+	reader := bufio.NewReader(inputFile)
+
+	nameLen, err := reader.ReadByte()
+	if err != nil {
+		return fmt.Errorf("read file name length from archive %q: %w", inputPath, err)
+	}
+
+	fileNameBuf := make([]byte, int(nameLen))
+	if _, err = io.ReadFull(reader, fileNameBuf); err != nil {
+		return fmt.Errorf("read file name from archive %q: %w", inputPath, err)
+	}
+
+	fileName := string(fileNameBuf)
+	outputPath := filepath.Join(outputDir, fileName)
+
+	if err = os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("created output dir %q: %w", outputDir, err)
+	}
+
+	outputFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("create output file %q: %w", outputPath, err)
+	}
+	defer outputFile.Close()
+
+	// Следующий этап:
+	// - читать размер блока
+	// - читать блок
+	// - распаковывать его
+	// - записывать в outputFile
 
 	return nil
 }
