@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -165,8 +166,6 @@ func (sa *SimpleArchiver) decompress(data []byte) []byte {
 		control := data[i]
 		i++
 
-		fmt.Printf("Управляющий байт: %#02x (%08b)\n", control, control)
-
 		isCompressed := (control & 0x80) != 0
 		length := int(control & 0x7F)
 
@@ -175,8 +174,6 @@ func (sa *SimpleArchiver) decompress(data []byte) []byte {
 		}
 
 		if isCompressed {
-			fmt.Printf("Тип: сжатая, длина: %d\n", length)
-
 			if i >= len(data) {
 				return result
 			}
@@ -190,8 +187,6 @@ func (sa *SimpleArchiver) decompress(data []byte) []byte {
 				result[start+j] = value
 			}
 		} else {
-			fmt.Printf("Тип: несжатая, длина: %d\n", length)
-
 			if i+length > len(data) {
 				return result
 			}
@@ -301,11 +296,39 @@ func (sa *SimpleArchiver) DecompressFile(inputPath, outputDir string) error {
 	}
 	defer outputFile.Close()
 
-	// Следующий этап:
-	// - читать размер блока
-	// - читать блок
-	// - распаковывать его
-	// - записывать в outputFile
+	writer := bufio.NewWriter(outputFile)
+	defer writer.Flush()
+
+	sizeBuf := make([]byte, 2)
+	blockBuf := make([]byte, 0, DefaultBufferSize)
+	for {
+		_, readErr := io.ReadFull(reader, sizeBuf)
+
+		if readErr == io.EOF {
+			break
+		}
+
+		if errors.Is(readErr, io.ErrUnexpectedEOF) || readErr != nil {
+			return fmt.Errorf("read block size %q: %w", inputPath, readErr)
+		}
+
+		blockSize := int(uint16(sizeBuf[0])<<8 | uint16(sizeBuf[1]))
+
+		if cap(blockBuf) < blockSize {
+			blockBuf = make([]byte, blockSize)
+		}
+		blockBuf = blockBuf[:blockSize]
+
+		if _, err = io.ReadFull(reader, blockBuf); err != nil {
+			return fmt.Errorf("read block data from archive %q: %w", inputPath, err)
+		}
+
+		decompressed := sa.decompress(blockBuf)
+
+		if _, err = writer.Write(decompressed); err != nil {
+			return fmt.Errorf("write decompressed data to %q: %w", outputPath, err)
+		}
+	}
 
 	return nil
 }
