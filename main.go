@@ -2,12 +2,13 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
@@ -333,56 +334,40 @@ func (sa *SimpleArchiver) DecompressFile(inputPath, outputDir string) error {
 	return nil
 }
 
-func main() {
-	fmt.Println("Happy coding!!!")
+type model struct {
+	archiver  *SimpleArchiver
+	state     string
+	inputPath string
+	choices   []string
+	cursor    int
+	err       error
+}
 
-	sa := NewArchiver("path")
-
-	tests := []struct {
-		name string
-		data []byte
-	}{
-		{
-			name: "Пустые данные",
-			data: []byte{},
-		},
-		{
-			name: "Один символ",
-			data: []byte("A"),
-		},
-		{
-			name: "Только несжатый блок",
-			data: []byte("ABCDE"),
-		},
-		{
-			name: "Сжатие и распаковка 'AAAAABCD'",
-			data: []byte("AAAAABCD"),
-		},
-		{
-			name: "Несколько блоков подряд",
-			data: []byte("AAAAABBBBCCXYZDDDDE"),
-		},
-		{
-			name: "Смешанная последовательность",
-			data: []byte("ZZZZabcdEEEE12345"),
-		},
-		{
-			name: "Граница 127 одинаковых символов",
-			data: bytes.Repeat([]byte{'X'}, 127),
-		},
+func initialModel() model {
+	return model{
+		archiver: NewArchiver(""),
+		state:    "menu",
+		choices:  []string{"Сжать файл", "Распаковать файл", "Выход"},
+		cursor:   0,
 	}
+}
 
-	for _, test := range tests {
-		fmt.Println("=======================================")
-		fmt.Println(test.name)
+func (m model) Init() tea.Cmd {
+	return nil
+}
 
-		compressed := sa.compress(test.data)
-		decompressed := sa.decompress(compressed)
-		isEqual := bytes.Equal(test.data, decompressed)
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m, nil
+}
 
-		fmt.Printf("Исходные данные: %v\n", test.data)
-		fmt.Printf("Сжатые данные:   %v\n", compressed)
-		fmt.Printf("Распакованные:   %v\n", decompressed)
-		fmt.Printf("Данные совпадают: %t\n", isEqual)
+func (m model) View() string {
+	return ""
+}
+
+func main() {
+	p := tea.NewProgram(initialModel())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
 	}
 }
