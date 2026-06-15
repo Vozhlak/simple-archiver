@@ -358,15 +358,27 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch currMsg := msg.(type) {
+	case tea.KeyMsg:
+		if m.state == "menu" {
+			return m.updateMenu(currMsg)
+		}
+	}
+
 	return m, nil
 }
 
 func (m model) View() string {
-	if m.state == "menu" {
+	switch m.state {
+	case "menu":
 		return m.viewMenu()
+	case "compress":
+		return "Введите путь к файлу для сжатия"
+	case "decompress":
+		return "Введите путь к архиву для распаковки"
+	default:
+		return ""
 	}
-
-	return ""
 }
 
 func (m model) viewMenu() string {
@@ -390,6 +402,32 @@ func (m model) viewMenu() string {
 	b.WriteString("Нажмите q для выхода\n")
 
 	return b.String()
+}
+
+func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(m.choices)-1 {
+			m.cursor++
+		}
+	case "enter":
+		switch m.cursor {
+		case 0:
+			m.state = "compress"
+		case 1:
+			m.state = "decompress"
+		case 2:
+			return m, tea.Quit
+		}
+	}
+
+	return m, nil
 }
 
 func main() {
