@@ -373,9 +373,9 @@ func (m model) View() string {
 	case "menu":
 		return m.viewMenu()
 	case "compress":
-		return "Введите путь к файлу для сжатия"
+		return m.viewInput()
 	case "decompress":
-		return "Введите путь к архиву для распаковки"
+		return m.viewInput()
 	default:
 		return ""
 	}
@@ -428,6 +428,33 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m model) viewInput() string {
+	var b strings.Builder
+
+	b.WriteString("=== Простой архиватор ===\n\n")
+
+	b.WriteString("Введите путь к файлу для ")
+	if m.state == "compress" {
+		b.WriteString("сжатия:\n")
+	}
+	if m.state == "decompress" {
+		b.WriteString("распаковки:\n")
+	}
+
+	b.WriteString(m.inputPath)
+	b.WriteString("_\n\n")
+
+	if m.err != nil {
+		b.WriteString("Ошибка: ")
+		b.WriteString(m.err.Error())
+		b.WriteString("\n\n")
+	}
+
+	b.WriteString("Enter для подтверждения, Esc для возврата в меню")
+
+	return b.String()
 }
 
 func main() {
