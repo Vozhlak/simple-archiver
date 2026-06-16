@@ -470,8 +470,27 @@ func (m model) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = "menu"
 
 	case tea.KeyEnter.String():
-		if m.inputPath == "" {
+		{
+			if m.inputPath == "" {
+				return m, nil
+			}
+
+			sa := NewArchiver(m.inputPath)
+			m.err = nil
+
+			switch m.state {
+			case "compress":
+				m.err = sa.CompressFile(m.inputPath, m.inputPath+".sarch")
+			case "decompress":
+				m.err = sa.DecompressFile(m.inputPath, filepath.Dir(m.inputPath))
+			}
+
+			if m.err == nil {
+				m.state = "menu"
+			}
+
 			return m, nil
+
 		}
 
 	case tea.KeyBackspace.String():
