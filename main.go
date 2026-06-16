@@ -380,7 +380,7 @@ func (m model) View() string {
 	case "compress", "decompress":
 		return m.viewInput()
 	default:
-		return ""
+		return "Неизвестное состояние"
 	}
 }
 
