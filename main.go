@@ -360,21 +360,24 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch currMsg := msg.(type) {
 	case tea.KeyMsg:
-		if m.state == "menu" {
+		switch m.state {
+		case "menu":
 			return m.updateMenu(currMsg)
+		case "compress", "decompress":
+			return m.updateInput(currMsg)
+		default:
+			return m, nil
 		}
+	default:
+		return m, nil
 	}
-
-	return m, nil
 }
 
 func (m model) View() string {
 	switch m.state {
 	case "menu":
 		return m.viewMenu()
-	case "compress":
-		return m.viewInput()
-	case "decompress":
+	case "compress", "decompress":
 		return m.viewInput()
 	default:
 		return ""
@@ -455,6 +458,37 @@ func (m model) viewInput() string {
 	b.WriteString("Enter для подтверждения, Esc для возврата в меню")
 
 	return b.String()
+}
+
+func (m model) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case tea.KeyCtrlC.String():
+		return m, tea.Quit
+
+	case tea.KeyEsc.String():
+		m.err = nil
+		m.state = "menu"
+
+	case tea.KeyEnter.String():
+		if m.inputPath == "" {
+			return m, nil
+		}
+
+	case tea.KeyBackspace.String():
+		if len(m.inputPath) == 0 {
+			return m, nil
+		}
+
+		v := []rune(m.inputPath)
+		m.inputPath = string(v[:len(v)-1])
+
+	default:
+		if len([]rune(msg.String())) == 1 {
+			m.inputPath += msg.String()
+		}
+	}
+
+	return m, nil
 }
 
 func main() {
